@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1.0">
+<title>RESONANCE — Monitoring</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --egyptian:  #29339B;
+  --steel:     #74A4BC;
+  --ash:       #B6D6CC;
+  --cream:     #F1FEC6;
+  --scarlet:   #FF3A20;
+  --bg:        #eef2f5;
+  --card:      #ffffff;
+  --shadow:    rgba(41,51,155,0.10);
+  --text:      #29339B;
+  --muted:     #6b7ab8;
+  --subtle:    #a0adce;
+  --font:      'Nunito',sans-serif;
+}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--text)}
+.root{width:1920px;height:1080px;display:grid;grid-template-rows:72px 1fr 56px}
+
+/* TOP BAR */
+.topbar{background:var(--egyptian);padding:0 64px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 16px rgba(41,51,155,.25)}
+.tb-left{display:flex;align-items:center;gap:16px}
+.tb-icon{width:44px;height:44px;background:rgba(255,255,255,0.15);border-radius:13px;
+  display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.2)}
+.tb-icon svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb-title{font-size:22px;font-weight:900;color:#fff;letter-spacing:.02em}
+.tb-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);margin-top:2px}
+.tb-right{display:flex;align-items:center;gap:32px;font-size:13px;font-weight:700;color:rgba(255,255,255,0.6)}
+.tb-right b{color:#fff;font-weight:800}
+.live-pill{background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.9);
+  border:1.5px solid rgba(255,255,255,0.2);border-radius:20px;
+  padding:5px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#B6D6CC;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes blink{50%{opacity:0}}
+
+/* MAIN */
+.main{padding:26px 64px 22px;display:grid;grid-template-rows:auto 1fr auto;gap:0}
+.section-title{font-size:30px;font-weight:900;letter-spacing:-.02em;color:var(--egyptian);margin-bottom:20px}
+
+/* 3-col grid */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;min-height:0}
+.part-col{display:grid;grid-template-rows:1fr 1fr;gap:20px}
+.pwr-col{display:flex;flex-direction:column}
+
+/* 카드 공통 */
+.metric-card{
+  background:var(--card);border-radius:22px;
+  padding:24px 28px 20px;
+  box-shadow:0 4px 24px var(--shadow);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:space-between;
+  border-top:5px solid transparent;
+  transition:border-top-color .4s;
+}
+.pwr-col .metric-card{flex:1}
+
+/* 각 지표별 컬러 */
+/* 온도 = scarlet */
+#card-temp{border-top-color:var(--scarlet)}
+#card-temp .prog-fill{background:var(--scarlet)}
+#card-temp .card-value{color:var(--scarlet)}
+#card-temp .card-name{color:var(--scarlet)}
+/* CPU = steel */
+#card-cpu{border-top-color:var(--steel)}
+#card-cpu .prog-fill{background:var(--steel)}
+#card-cpu .card-value{color:var(--steel)}
+#card-cpu .card-name{color:var(--steel)}
+/* 메모리 = ash */
+#card-mem{border-top-color:var(--ash)}
+#card-mem .prog-fill{background:var(--ash)}
+#card-mem .card-value{color:#4a9486}
+#card-mem .card-name{color:#4a9486}
+/* 디스크 = cream → 배경 채움 (밝은색이라 글자는 egyptian) */
+#card-disk{border-top-color:#c8d870;background:var(--cream)}
+#card-disk .prog-fill{background:#a8bb30}
+#card-disk .card-value{color:#5a6a00}
+#card-disk .card-name{color:#5a6a00}
+/* 전력 = egyptian */
+#card-pwr{border-top-color:var(--egyptian)}
+#card-pwr .prog-fill{background:var(--egyptian)}
+#card-pwr .card-value{color:var(--egyptian)}
+#card-pwr .card-name{color:var(--egyptian)}
+
+/* 경고·위험 오버라이드 */
+.metric-card.warn{border-top-color:#e8a800 !important}
+.metric-card.warn .prog-fill{background:#e8a800 !important}
+.metric-card.warn .card-value{color:#c07800 !important}
+.metric-card.danger{border-top-color:var(--scarlet) !important;
+  box-shadow:0 4px 24px rgba(255,58,32,.18) !important}
+.metric-card.danger .prog-fill{background:var(--scarlet) !important}
+.metric-card.danger .card-value{color:var(--scarlet) !important}
+
+/* 카드 내부 */
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.card-name{font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+.card-src{font-size:11px;font-weight:600;color:var(--subtle);letter-spacing:.04em;margin-top:2px;text-transform:uppercase}
+
+.status-badge{font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;letter-spacing:.04em;flex-shrink:0}
+.bOk   {background:#edf7f4;color:#2d9e7a}
+.bWarn {background:#fff5d6;color:#c07800}
+.bDanger{background:#fff0ee;color:var(--scarlet);animation:blink 1.2s step-end infinite}
+
+/* 수치 – 매우 크게 */
+.card-value{font-size:100px;font-weight:900;line-height:1;letter-spacing:-.04em;
+  transition:color .4s;text-shadow:0 2px 0 rgba(0,0,0,.04)}
+.pwr-col .card-value{font-size:120px}
+
+.card-bottom{}
+.prog-bg{height:8px;background:#e8ecf5;border-radius:9px;overflow:hidden;margin-bottom:7px}
+.prog-fill{height:100%;border-radius:9px;transition:width .9s ease,background .4s}
+#card-disk .prog-bg{background:#dce89a}
+.card-threshold{display:flex;justify-content:space-between;
+  font-size:11px;font-weight:700;color:var(--subtle);letter-spacing:.05em;text-transform:uppercase}
+
+/* STATUS BAR */
+.status-bar{background:var(--egyptian);border-radius:18px;padding:0 36px;height:58px;
+  margin-top:20px;box-shadow:0 4px 20px rgba(41,51,155,.2);display:flex;align-items:center}
+.sb-item{flex:1;display:flex;align-items:center;gap:9px;
+  font-size:13px;font-weight:700;color:rgba(255,255,255,0.6);
+  border-right:1px solid rgba(255,255,255,0.12);padding:0 24px}
+.sb-item:first-child{padding-left:0}
+.sb-item:last-child{border-right:none}
+.sb-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot-temp  {background:var(--scarlet)}
+.dot-cpu   {background:var(--steel)}
+.dot-mem   {background:var(--ash)}
+.dot-disk  {background:#c8d870}
+.dot-pwr   {background:rgba(255,255,255,0.5)}
+.dot-warn  {background:#e8a800}
+.dot-danger{background:var(--scarlet);animation:blink .8s step-end infinite}
+.sb-key{color:rgba(255,255,255,0.5);margin-right:1px}
+.sb-val{font-weight:900;color:#fff}
+.sb-val.warn  {color:#ffd060}
+.sb-val.danger{color:#ff8a7a}
+
+/* BOTTOM BAR */
+.bottombar{background:var(--egyptian);padding:0 64px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;font-weight:700;color:rgba(255,255,255,0.45)}
+</style>
+</head>
+<body>
+<div class="root">
+
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+      <div><div class="tb-title">RESONANCE</div><div class="tb-sub">Server Room Remote Monitoring System</div></div>
+    </div>
+    <div class="tb-right">
+      <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+      <span>UPTIME: <b id="uptime">00:00:00</b></span>
+      <span>NODE: <b>SERVER-01</b></span>
+      <span id="clock">2026-05-22 00:00:00</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="section-title">SYS MONITOR // SERVER-01 NODE</div>
+
+    <div class="metric-grid">
+
+      <!-- CPU 파트: 온도(위) + 사용률(아래) -->
+      <div class="part-col">
+        <div class="metric-card" id="card-temp">
+          <div>
+            <div class="card-head">
+              <div><div class="card-name">CPU Temperature</div><div class="card-src">/sys/class/thermal</div></div>
+              <div class="status-badge bOk" id="badge-temp">NORMAL</div>
+            </div>
+            <div class="card-value" id="val-temp">63°</div>
+          </div>
+          <div class="card-bottom">
+            <div class="prog-bg"><div class="prog-fill" id="bar-temp" style="width:74%"></div></div>
+            <div class="card-threshold"><span>Warn 70°C</span><span>Crit 85°C</span></div>
+          </div>
+        </div>
+        <div class="metric-card" id="card-cpu">
+          <div>
+            <div class="card-head">
+              <div><div class="card-name">CPU Utilization</div><div class="card-src">/proc/stat</div></div>
+              <div class="status-badge bOk" id="badge-cpu">NORMAL</div>
+            </div>
+            <div class="card-value" id="val-cpu">45%</div>
+          </div>
+          <div class="card-bottom">
+            <div class="prog-bg"><div class="prog-fill" id="bar-cpu" style="width:45%"></div></div>
+            <div class="card-threshold"><span>Warn 70%</span><span>Crit 85%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 메모리·디스크 파트 -->
+      <div class="part-col">
+        <div class="metric-card" id="card-mem">
+          <div>
+            <div class="card-head">
+              <div><div class="card-name">Memory Usage</div><div class="card-src">/proc/meminfo</div></div>
+              <div class="status-badge bOk" id="badge-mem">NORMAL</div>
+            </div>
+            <div class="card-value" id="val-mem">55%</div>
+          </div>
+          <div class="card-bottom">
+            <div class="prog-bg"><div class="prog-fill" id="bar-mem" style="width:55%"></div></div>
+            <div class="card-threshold"><span>Warn 80%</span><span>Crit 90%</span></div>
+          </div>
+        </div>
+        <div class="metric-card" id="card-disk">
+          <div>
+            <div class="card-head">
+              <div><div class="card-name">Disk Usage</div><div class="card-src">statvfs()</div></div>
+              <div class="status-badge bOk" id="badge-disk">NORMAL</div>
+            </div>
+            <div class="card-value" id="val-disk">70%</div>
+          </div>
+          <div class="card-bottom">
+            <div class="prog-bg"><div class="prog-fill" id="bar-disk" style="width:70%"></div></div>
+            <div class="card-threshold"><span>Warn 80%</span><span>Crit 90%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 전력 파트 -->
+      <div class="pwr-col">
+        <div class="metric-card" id="card-pwr">
+          <div>
+            <div class="card-head">
+              <div><div class="card-name">Power Consumption</div><div class="card-src">RAPL / /sys/class/powercap</div></div>
+              <div class="status-badge bOk" id="badge-pwr">NORMAL</div>
+            </div>
+            <div class="card-value" id="val-pwr">54W</div>
+          </div>
+          <div class="card-bottom">
+            <div class="prog-bg"><div class="prog-fill" id="bar-pwr" style="width:54%"></div></div>
+            <div class="card-threshold"><span>Warn TDP 70%</span><span>Crit TDP 90%</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <div class="sb-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sb-key">UPTIME:</span><span class="sb-val" id="uptime2">00:00:00</span>
+      </div>
+      <div class="sb-item"><div class="sb-dot dot-temp" id="dot-temp"></div><span class="sb-key">CPU_TEMP:</span><span class="sb-val" id="sf-temp">OK</span></div>
+      <div class="sb-item"><div class="sb-dot dot-cpu"  id="dot-cpu"></div><span class="sb-key">CPU_USAGE:</span><span class="sb-val" id="sf-cpu">OK</span></div>
+      <div class="sb-item"><div class="sb-dot dot-mem"  id="dot-mem"></div><span class="sb-key">MEMORY:</span><span class="sb-val" id="sf-mem">OK</span></div>
+      <div class="sb-item"><div class="sb-dot dot-disk" id="dot-disk"></div><span class="sb-key">DISK:</span><span class="sb-val" id="sf-disk">OK</span></div>
+      <div class="sb-item"><div class="sb-dot dot-pwr"  id="dot-pwr"></div><span class="sb-key">POWER:</span><span class="sb-val" id="sf-pwr">OK</span></div>
+      <div class="sb-item" style="flex:0.45;color:rgba(255,255,255,0.3);font-size:11px;border-right:none">POLL 1s<br>WebSocket</div>
+    </div>
+  </div>
+
+  <div class="bottombar">
+    <span>RESONANCE · Server Room Monitoring System · 2026.05.18 ~ 07.12</span>
+    <span>SLIDE 02 / 03 — Real-Time Monitoring</span>
+    <span>UI/UX: 서수현 | BACKEND: 김용운 | AR: 이종재 · 서인호</span>
+  </div>
+
+</div>
+<script>
+let sec=0
+function pad(n){return String(n).padStart(2,'0')}
+function tickClock(){
+  document.getElementById('clock').textContent=new Date().toISOString().replace('T',' ').slice(0,19)
+  sec++;const u=pad(Math.floor(sec/3600))+':'+pad(Math.floor(sec%3600/60))+':'+pad(sec%60)
+  document.getElementById('uptime').textContent=u
+  document.getElementById('uptime2').textContent=u
+}
+tickClock();setInterval(tickClock,1000)
+
+const state={temp:63,cpu:45,mem:55,disk:70,pwr:54}
+function clamp(v,a,b){return Math.min(b,Math.max(a,v))}
+function rnd(v,d,a,b){return clamp(Math.round((v+Math.random()*d*2-d)*10)/10,a,b)}
+function getStatus(key,v){
+  const r={temp:{w:70,c:85},cpu:{w:70,c:85},mem:{w:80,c:90},disk:{w:80,c:90},pwr:{w:70,c:90}}
+  const p=key==='pwr'?(v/100)*100:v
+  return p>=r[key].c?'danger':p>=r[key].w?'warn':'ok'
+}
+function applyCard(key,val,display,barPct){
+  const s=getStatus(key,val)
+  const card=document.getElementById('card-'+key)
+  // 경고/위험만 className 변경, 기본은 id 색상 유지
+  card.className='metric-card'+(s==='ok'?'':' '+s)
+  document.getElementById('val-'+key).textContent=display
+  document.getElementById('bar-'+key).style.width=barPct+'%'
+  const b=document.getElementById('badge-'+key)
+  b.className='status-badge '+(s==='ok'?'bOk':s==='warn'?'bWarn':'bDanger')
+  b.textContent=s==='ok'?'NORMAL':s==='warn'?'WARNING':'CRITICAL'
+  const sv=document.getElementById('sf-'+key)
+  sv.className='sb-val'+(s==='ok'?'':' '+s)
+  sv.textContent=s==='ok'?'OK':s==='warn'?'WARN':'CRITICAL'
+  // 상태바 도트 색은 각 지표 고유색 유지, danger만 blink
+  const dot=document.getElementById('dot-'+key)
+  const dotBase={'temp':'dot-temp','cpu':'dot-cpu','mem':'dot-mem','disk':'dot-disk','pwr':'dot-pwr'}
+  dot.className='sb-dot '+dotBase[key]+(s==='danger'?' dot-danger':'')
+}
+function update(){
+  state.temp=rnd(state.temp,2.5,40,100)
+  state.cpu =rnd(state.cpu, 5,  5, 99)
+  state.mem =rnd(state.mem, 2, 20, 98)
+  state.disk=rnd(state.disk,1, 30, 99)
+  state.pwr =rnd(state.pwr, 3, 20,100)
+  applyCard('temp',state.temp,Math.round(state.temp)+'°', Math.round((state.temp-40)/60*100))
+  applyCard('cpu', state.cpu, Math.round(state.cpu)+'%',  Math.round(state.cpu))
+  applyCard('mem', state.mem, Math.round(state.mem)+'%',  Math.round(state.mem))
+  applyCard('disk',state.disk,Math.round(state.disk)+'%', Math.round(state.disk))
+  applyCard('pwr', state.pwr, Math.round(state.pwr)+'W',  Math.round(state.pwr))
+}
+update();setInterval(update,1800)
+</script>
+</body>
+</html>

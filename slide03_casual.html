@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1.0">
+<title>RESONANCE — Graph Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --egyptian:#29339B;--steel:#74A4BC;--ash:#B6D6CC;--cream:#F1FEC6;--scarlet:#FF3A20;
+  --bg:#eef2f5;--card:#fff;--shadow:rgba(41,51,155,0.10);
+  --text:#29339B;--muted:#6b7ab8;--subtle:#a0adce;
+  --font:'Nunito',sans-serif;
+}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--text)}
+.root{width:1920px;height:1080px;display:grid;grid-template-rows:72px 1fr 56px}
+
+.topbar{background:var(--egyptian);padding:0 64px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 16px rgba(41,51,155,.25)}
+.tb-left{display:flex;align-items:center;gap:16px}
+.tb-icon{width:44px;height:44px;background:rgba(255,255,255,0.15);border-radius:13px;
+  display:flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.2)}
+.tb-icon svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb-title{font-size:22px;font-weight:900;color:#fff;letter-spacing:.02em}
+.tb-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);margin-top:2px}
+.tb-right{display:flex;align-items:center;gap:32px;font-size:13px;font-weight:700;color:rgba(255,255,255,0.6)}
+.tb-right b{color:#fff;font-weight:800}
+.live-pill{background:rgba(255,255,255,0.12);color:rgba(255,255,255,.9);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:20px;
+  padding:5px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--ash);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes blink{50%{opacity:0}}
+
+.main{padding:24px 64px 20px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:18px}
+
+.chart-card{background:var(--card);border-radius:22px;padding:20px 26px 16px;
+  box-shadow:0 4px 20px var(--shadow);display:flex;flex-direction:column;
+  position:relative;overflow:hidden;border-top:5px solid transparent}
+
+/* 지표별 카드 상단 컬러 */
+#cc-temp{border-top-color:var(--scarlet)}
+#cc-cpu {border-top-color:var(--steel)}
+#cc-mem {border-top-color:var(--ash)}
+#cc-pwr {border-top-color:var(--egyptian)}
+
+.cc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0}
+.cc-left{display:flex;flex-direction:column;gap:2px}
+.cc-title{font-size:15px;font-weight:900;letter-spacing:-.01em}
+.cc-sub  {font-size:11px;font-weight:600;color:var(--subtle);letter-spacing:.04em;text-transform:uppercase}
+
+.cc-right{display:flex;align-items:center;gap:10px}
+.cc-val{font-size:28px;font-weight:900;letter-spacing:-.02em;transition:color .4s}
+
+/* 지표별 수치 색상 */
+#cv-temp{color:var(--scarlet)}
+#cv-cpu {color:var(--steel)}
+#cv-mem {color:#4a9486}
+#cv-pwr {color:var(--egyptian)}
+.cc-val.warn  {color:#c07800 !important}
+.cc-val.danger{color:var(--scarlet) !important}
+
+.status-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px}
+.bOk   {background:#edf7f4;color:#2d9e7a}
+.bWarn {background:#fff5d6;color:#c07800}
+.bDanger{background:#fff0ee;color:var(--scarlet);animation:blink 1.2s step-end infinite}
+
+.legend-row{display:flex;gap:14px;flex-shrink:0;margin-bottom:8px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--subtle)}
+.legend-sq{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+.chart-wrap{flex:1;position:relative;min-height:0}
+
+.bottombar{background:var(--egyptian);padding:0 64px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;font-weight:700;color:rgba(255,255,255,.45)}
+</style>
+</head>
+<body>
+<div class="root">
+
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+      <div><div class="tb-title">RESONANCE</div><div class="tb-sub">Server Room Remote Monitoring System</div></div>
+    </div>
+    <div class="tb-right">
+      <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+      <span>WINDOW: <b>10분</b></span>
+      <span>NODE: <b>SERVER-01</b></span>
+      <span id="clock">2026-05-22 00:00:00</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- CPU 온도 -->
+    <div class="chart-card" id="cc-temp">
+      <div class="cc-head">
+        <div class="cc-left"><div class="cc-title">CPU 온도</div><div class="cc-sub">/sys/class/thermal · 1s poll</div></div>
+        <div class="cc-right">
+          <div class="cc-val" id="cv-temp">63°C</div>
+          <div class="status-badge bOk" id="badge-temp">NORMAL</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-sq" style="background:#FF3A20"></div>CPU Temp</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#ffd060;border:1px dashed #ccc"></div>경고 70°C</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#FF3A20;opacity:.5;border:1px dashed #ccc"></div>위험 85°C</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartTemp" role="img" aria-label="CPU 온도 10분 추이">CPU 온도 추이</canvas></div>
+    </div>
+
+    <!-- CPU 사용률 -->
+    <div class="chart-card" id="cc-cpu">
+      <div class="cc-head">
+        <div class="cc-left"><div class="cc-title">CPU 사용률</div><div class="cc-sub">/proc/stat · 1s poll</div></div>
+        <div class="cc-right">
+          <div class="cc-val" id="cv-cpu">45%</div>
+          <div class="status-badge bOk" id="badge-cpu">NORMAL</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-sq" style="background:#74A4BC"></div>CPU Usage</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#ffd060;border:1px dashed #ccc"></div>경고 70%</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#FF3A20;opacity:.5;border:1px dashed #ccc"></div>위험 85%</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartCpu" role="img" aria-label="CPU 사용률 10분 추이">CPU 사용률 추이</canvas></div>
+    </div>
+
+    <!-- 메모리 & 디스크 -->
+    <div class="chart-card" id="cc-mem">
+      <div class="cc-head">
+        <div class="cc-left"><div class="cc-title">메모리 &amp; 디스크</div><div class="cc-sub">/proc/meminfo · statvfs()</div></div>
+        <div class="cc-right">
+          <div class="cc-val" id="cv-mem">55%</div>
+          <div class="status-badge bOk" id="badge-mem">NORMAL</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-sq" style="background:#B6D6CC"></div>Memory (Ash)</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#c8d870"></div>Disk (Cream)</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#ffd060;border:1px dashed #ccc"></div>경고 80%</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#FF3A20;opacity:.5;border:1px dashed #ccc"></div>위험 90%</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartMem" role="img" aria-label="메모리·디스크 10분 추이">메모리·디스크 추이</canvas></div>
+    </div>
+
+    <!-- 전력 -->
+    <div class="chart-card" id="cc-pwr">
+      <div class="cc-head">
+        <div class="cc-left"><div class="cc-title">전력 소비</div><div class="cc-sub">/sys/class/powercap · RAPL</div></div>
+        <div class="cc-right">
+          <div class="cc-val" id="cv-pwr">54W</div>
+          <div class="status-badge bOk" id="badge-pwr">NORMAL</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-sq" style="background:#29339B"></div>Power (W)</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#ffd060;border:1px dashed #ccc"></div>경고 TDP 70%</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#FF3A20;opacity:.5;border:1px dashed #ccc"></div>위험 TDP 90%</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartPwr" role="img" aria-label="전력 소비 10분 추이">전력 추이</canvas></div>
+    </div>
+
+  </div>
+
+  <div class="bottombar">
+    <span>RESONANCE · Server Room Monitoring System · 2026.05.18 ~ 07.12</span>
+    <span>SLIDE 03 / 03 — Graph Dashboard</span>
+    <span>UI/UX: 서수현 | BACKEND: 김용운 | AR: 이종재 · 서인호</span>
+  </div>
+
+</div>
+<script>
+function tickClock(){document.getElementById('clock').textContent=new Date().toISOString().replace('T',' ').slice(0,19)}
+tickClock();setInterval(tickClock,1000)
+
+const N=20
+const labels=Array.from({length:N},(_,i)=>i===N-1?'NOW':`-${(N-1-i)*30}s`)
+function makeStream(init,mn,mx){let v=init,d=[];for(let i=0;i<N;i++){v=Math.min(mx,Math.max(mn,v+(Math.random()*4-2)));d.push(Math.round(v*10)/10)}return d}
+const S={temp:makeStream(63,40,100),cpu:makeStream(45,5,99),mem:makeStream(55,20,98),disk:makeStream(70,30,99),pwr:makeStream(54,20,100)}
+
+Chart.defaults.font.family="'Nunito',sans-serif";Chart.defaults.font.size=11;Chart.defaults.font.weight='700'
+const GRID='#e8ecf5',TICK='#a0adce'
+function baseOpts(mn,mx){return{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+  plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',borderColor:'#dde3f5',borderWidth:1.5,
+    titleColor:'#29339B',bodyColor:'#6b7ab8',padding:10,cornerRadius:10,
+    titleFont:{family:"'Nunito',sans-serif",size:12,weight:'800'},bodyFont:{family:"'Nunito',sans-serif",size:11,weight:'700'}}},
+  scales:{x:{ticks:{color:TICK,autoSkip:true,maxTicksLimit:7,maxRotation:0},grid:{color:GRID},border:{color:'#dde3f5'}},
+    y:{min:mn,max:mx,ticks:{color:TICK},grid:{color:GRID},border:{color:'#dde3f5'}}}}}
+function flatLine(y,c){return{data:Array(N).fill(y),borderColor:c,borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false,label:''}}
+function mkChart(id,data,color,warnY,critY,mn,mx){return new Chart(document.getElementById(id),{type:'line',
+  data:{labels,datasets:[{label:'value',data:[...data],borderColor:color,backgroundColor:color+'28',
+    borderWidth:2.5,pointRadius:3,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:2,tension:0.4,fill:true},
+    flatLine(warnY,'#e8c200'),flatLine(critY,'#FF3A20')]},options:baseOpts(mn,mx)})}
+function mkDual(id,d1,c1,d2,c2,warnY,critY,mn,mx){return new Chart(document.getElementById(id),{type:'line',
+  data:{labels,datasets:[
+    {label:'Memory',data:[...d1],borderColor:c1,backgroundColor:c1+'28',borderWidth:2.5,pointRadius:3,pointBackgroundColor:c1,pointBorderColor:'#fff',pointBorderWidth:2,tension:0.4,fill:true},
+    {label:'Disk',  data:[...d2],borderColor:c2,backgroundColor:c2+'20',borderWidth:2.5,pointRadius:3,pointBackgroundColor:c2,pointBorderColor:'#fff',pointBorderWidth:2,tension:0.4,fill:false},
+    flatLine(warnY,'#e8c200'),flatLine(critY,'#FF3A20')]},options:baseOpts(mn,mx)})}
+
+const cTemp=mkChart('chartTemp',S.temp,'#FF3A20',70,85,35,100)
+const cCpu =mkChart('chartCpu', S.cpu, '#74A4BC',70,85, 0,100)
+const cMem =mkDual ('chartMem', S.mem,'#B6D6CC',S.disk,'#c8d870',80,90,20,100)
+const cPwr =mkChart('chartPwr', S.pwr,'#29339B',70,90, 0,110)
+
+function clamp(v,a,b){return Math.min(b,Math.max(a,v))}
+function rnd(v,d,a,b){return clamp(Math.round((v+Math.random()*d*2-d)*10)/10,a,b)}
+function getStatus(v,w,c){return v>=c?'danger':v>=w?'warn':'ok'}
+
+function applyCard(cvId,badgeId,val,unit,s){
+  const cv=document.getElementById(cvId)
+  cv.textContent=Math.round(val)+unit
+  // 경고·위험 시에만 class 추가
+  const base=cv.className.replace(' warn','').replace(' danger','')
+  cv.className=base+(s==='ok'?'':' '+s)
+  const b=document.getElementById(badgeId)
+  b.className='status-badge '+(s==='ok'?'bOk':s==='warn'?'bWarn':'bDanger')
+  b.textContent=s==='ok'?'NORMAL':s==='warn'?'WARNING':'CRITICAL'
+}
+function pushShift(arr,v){arr.shift();arr.push(v)}
+function update(){
+  const nT=rnd(S.temp[N-1],2.5,40,100),nC=rnd(S.cpu[N-1],5,5,99)
+  const nM=rnd(S.mem[N-1],2,20,98),nD=rnd(S.disk[N-1],1,30,99),nP=rnd(S.pwr[N-1],3,20,100)
+  pushShift(S.temp,nT);pushShift(S.cpu,nC);pushShift(S.mem,nM);pushShift(S.disk,nD);pushShift(S.pwr,nP)
+  const sT=getStatus(nT,70,85),sC=getStatus(nC,70,85),sM=getStatus(nM,80,90),sP=getStatus((nP/100)*100,70,90)
+  cTemp.data.datasets[0].data=[...S.temp];cTemp.update('none')
+  cCpu.data.datasets[0].data=[...S.cpu];cCpu.update('none')
+  cMem.data.datasets[0].data=[...S.mem];cMem.data.datasets[1].data=[...S.disk];cMem.update('none')
+  cPwr.data.datasets[0].data=[...S.pwr];cPwr.update('none')
+  applyCard('cv-temp','badge-temp',nT,'°C',sT)
+  applyCard('cv-cpu', 'badge-cpu', nC,'%', sC)
+  applyCard('cv-mem', 'badge-mem', nM,'%', sM)
+  applyCard('cv-pwr', 'badge-pwr', nP,'W', sP)
+}
+update();setInterval(update,1800)
+</script>
+</body>
+</html>
